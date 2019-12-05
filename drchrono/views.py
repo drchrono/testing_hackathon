@@ -1,8 +1,8 @@
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404
 from django.views.generic import TemplateView
 from social_django.models import UserSocialAuth
 
-from drchrono.endpoints import DoctorEndpoint
+from drchrono.endpoints import DoctorEndpoint, APIException
 
 
 class SetupView(TemplateView):
@@ -23,9 +23,8 @@ class DoctorWelcome(TemplateView):
         Social Auth module is configured to store our access tokens. This dark magic will fetch it for us if we've
         already signed in.
         """
-        oauth_provider = UserSocialAuth.objects.get(provider='drchrono')
-        access_token = oauth_provider.extra_data['access_token']
-        return access_token
+        oauth_provider = get_object_or_404(UserSocialAuth, provider='drchrono')
+        return oauth_provider.extra_data['access_token']
 
     def make_api_request(self):
         """
@@ -34,16 +33,25 @@ class DoctorWelcome(TemplateView):
         """
         # We can create an instance of an endpoint resource class, and use it to fetch details
         access_token = self.get_token()
-        api = DoctorEndpoint(access_token)
-        # Grab the first doctor from the list; normally this would be the whole practice group, but your hackathon
-        # account probably only has one doctor in it.
-        return next(api.list())
+
+        try:
+            doctor = next(DoctorEndpoint(access_token).list())
+        except APIException:
+            # if this doesn't work we just return None
+            return None
+
+        # Grab the first doctor from the list, only one for this hackathon.
+        return doctor
 
     def get_context_data(self, **kwargs):
+        """
+
+        :param kwargs:
+        :return:
+        """
         kwargs = super(DoctorWelcome, self).get_context_data(**kwargs)
         # Hit the API using one of the endpoints just to prove that we can
         # If this works, then your oAuth setup is working correctly.
         doctor_details = self.make_api_request()
         kwargs['doctor'] = doctor_details
         return kwargs
-
