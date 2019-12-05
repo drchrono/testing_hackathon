@@ -1,5 +1,6 @@
-import requests
 import logging
+
+import requests
 
 
 class APIException(Exception): pass
@@ -74,7 +75,7 @@ class BaseEndpoint(object):
         returns the JSON content or raises an exception, based on what kind of response (2XX/4XX) we get
         """
         if response.ok:
-            if response.status_code != 204: # No Content
+            if response.status_code != 204:  # No Content
                 return response.json()
         else:
             exe = ERROR_CODES.get(response.status_code, APIException)
@@ -196,6 +197,7 @@ class AppointmentEndpoint(BaseEndpoint):
             params['date_range'] = date_range
         elif date:
             params['date'] = date
+        # todo: probably more clear as an if .. or ..
         if 'date' not in params and 'date_range' not in params:
             raise Exception("Must provide either start & end, or date argument")
         return super(AppointmentEndpoint, self).list(params, **kwargs)

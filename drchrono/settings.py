@@ -110,7 +110,6 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 
-# TODO: Configure your drchrono.com account's API settings to allow this app access
 # 1) go to https://app.drchrono.com/api-management/
 # 2) Add a new application
 # 3) configure your redirect URL to be http://localhost:8080/complete/drchrono/
