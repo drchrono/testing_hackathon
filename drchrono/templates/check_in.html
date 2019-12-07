@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}
+    Check In
+{% endblock %}
+{% block body %}
+    <h1>Check In</h1>
+    <form action="/check-in/" method="POST">
+        {% csrf_token %}
+        {{ form }}
+        <input type="submit" value="Check In">
+    </form>
+{% endblock %}

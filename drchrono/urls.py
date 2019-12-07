@@ -7,8 +7,10 @@ admin.autodiscover()
 
 urlpatterns = [
     url(r'^setup/$', views.SetupView.as_view(), name='setup'),
-    url(r'^welcome/$', views.DoctorWelcome.as_view(), name='setup'),
-
+    url(r'^welcome/$', views.DoctorWelcome.as_view(), name='setup'),  # todo change to welcome?
+    url(r'^check-in/$', views.CheckInView.as_view(), name='check-in'),
+    url(r'^demographics/$', views.DemographicView.as_view(), name='demographics'),
+    url(r'^finished/$', views.KioskEndView.as_view(), name='kiosk-end'),
     url(r'^admin/', admin.site.urls),
 
     url(r'', include('social.apps.django_app.urls', namespace='social')),
