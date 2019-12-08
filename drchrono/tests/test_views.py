@@ -1,3 +1,4 @@
+import requests
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from social_django.models import UserSocialAuth
@@ -46,11 +47,9 @@ class DoctorWelcomeTests(TestCase):
         self.assertEqual(self.doctor_welcome.make_api_request(), None)
 
     def test_get_context_data(self):
-        self.doctor_welcome.get_context_data()
+        with self.assertRaises(requests.exceptions.HTTPError):
+            self.doctor_welcome.get_context_data()
 
     def test_doctor_welcome(self):
-        response = self.client.get('/welcome/')
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(
-            b'Welcome to drchrono',
-            response.content)
+        with self.assertRaises(requests.exceptions.HTTPError):
+            response = self.client.get('/welcome/')

@@ -1,11 +1,25 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Welcome to drchrono</title>
-</head>
-<body>
-<h1>Welcome {{ doctor.first_name }} {{ doctor.last_name }}</h1>
-{{ doctor }}
-</body>
-</html>
+{% extends 'base.html' %}
+{% block title %}
+    Welcome!
+{% endblock %}
+{% block body %}
+    <h1>Welcome {{ doctor.first_name }} {{ doctor.last_name }}</h1>
+    <h2>{{ doctor }}</h2>
+    <h1>Arrivals</h1>
+    <div id="arrivals">
+        {% for appointment in arrived %}
+            <div class="appointment">
+                {{ appointment }}
+            </div>
+        {% endfor %}
+    </div>
+    <h1>Today's Appointments</h1>
+    <div id="appointments">
+        {% for appointment in appointments %}
+            <div class="appointment">
+                {{ appointment }}
+            </div>
+        {% endfor %}
+    </div>
+    <a href="/check-in/">Check In</a>
+{% endblock %}

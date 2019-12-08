@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}
+    Update Demographic Information
+{% endblock %}
+{% block body %}
+    <h1>Update Demographic Information</h1>
+    <form action="/demographics/" method="POST">
+        {% csrf_token %}
+        {{ form }}
+        <input type="hidden" name="patient_id" value="{{ patient_id }}"/>
+        <input type="submit" value="Update my information"/>
+        <input type="submit" value="Looks good to me!"/>
+    </form>
+{% endblock %}
