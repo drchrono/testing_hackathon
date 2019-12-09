@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load django_altair %}
 {% block header %}
     Welcome {{ doctor.first_name }} {{ doctor.last_name }}
 {% endblock %}
@@ -12,6 +13,10 @@
             <h2>Average Visit Duration</h2>
             <span>{{ avg_visit_duration }} Seconds</span>
         </div>
+    </div>
+    <hr/>
+    <div class="row" style="width: 800px; margin: 0 auto;">
+        {% render_chart chart %}
     </div>
     <hr/>
 

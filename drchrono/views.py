@@ -2,6 +2,8 @@ import math
 import time
 from datetime import datetime, timedelta
 
+import altair as alt
+import pandas as pd
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -62,16 +64,21 @@ class CheckInView(View):
         form = CheckInForm(request.POST)
 
         if form.is_valid():
-            # update appointment status to arrived on api
-            form.appointments_client.update(form.appointment_id, {'status': 'Arrived'})
+            # update status to Arrived on the api
+            oauth_provider = UserSocialAuth.objects.get(provider='drchrono')
+            access_token = oauth_provider.extra_data['access_token']
+            appointments_client = AppointmentEndpoint(access_token)
+            appointments_client.update(form.cleaned_data.get('appointment_id'), {'status': 'Arrived'})
 
-            # locally set status to arrived, and arrival_time to now
-            visit = Visit.objects.get(appointment_id=form.appointment_id,
-                                      patient_id=form.patient_id)
+            # locally set status to Arrived, and arrival_time to right now
+            visit = Visit.objects.get(appointment_id=form.cleaned_data.get('appointment_id'),
+                                      patient_id=form.cleaned_data.get('patient_id'))
             visit.arrival_time = timezone.now()
             visit.status = 'Arrived'
             visit.save()
-            return HttpResponseRedirect(f'/demographics/?patient_id={form.patient_id}')
+
+            # redirect to demographics page
+            return HttpResponseRedirect(f'/demographics/?patient_id={form.cleaned_data.get("patient_id")}')
         return render(request, 'check_in.html', {'form': form})
 
 
@@ -141,29 +148,35 @@ class DoctorWelcome(TemplateView):
         :return:
         """
         kwargs = super(DoctorWelcome, self).get_context_data(**kwargs)
-        # Hit the API using one of the endpoints just to prove that we can
-        # If this works, then your oAuth setup is working correctly.
-        doctor_details = self.make_api_request()
-        kwargs['doctor'] = doctor_details
 
+        # look for oauth user, so we can use it's access_token
         oauth_provider = get_object_or_404(UserSocialAuth, provider='drchrono')
+
+        # check if token is about to expire, and refresh it if so
+        # I couldn't get oauth_provider.access_token_expired() to work properly so wrote my own method
         if self.is_access_token_expired(oauth_provider.extra_data['access_token']):
             oauth_provider.refresh_token(load_strategy())
-        access_token = oauth_provider.extra_data['access_token']
 
+        access_token = oauth_provider.extra_data['access_token']
         patient_client = PatientEndpoint(access_token)
+        appointments_client = AppointmentEndpoint(access_token)
+
+        # information about the doctor
+        kwargs['doctor'] = next(DoctorEndpoint(access_token).list())
+
+        # list of patients
         patients = list(patient_client.list())
 
-        appointments_client = AppointmentEndpoint(access_token)
-        todays_appointments = list(appointments_client.list({}, start='12-06-19', end='12-06-19'))
-
+        # list of today's appointments
+        today_str = timezone.now().strftime('%m-%d-%y')
+        todays_appointments = list(appointments_client.list({}, start=today_str, end=today_str))
         for appointment in todays_appointments:
             patient = [patient for patient in patients if patient.get('id') == appointment.get('patient')][0]
             appointment['first_name'] = patient.get('first_name')
             appointment['last_name'] = patient.get('last_name')
-
         kwargs['appointments'] = todays_appointments
 
+        # fetch information about patients who have checked in
         visits = Visit.objects.filter(status='Arrived', arrival_time__isnull=False, start_time__isnull=True).all()
         for visit in visits:
             visit.wait_since_arrived = visit.get_wait_duration().seconds
@@ -172,6 +185,7 @@ class DoctorWelcome(TemplateView):
             visit.last_name = patient.get('last_name')
         kwargs['arrived'] = visits
 
+        # fetch information about our current appointment
         current_appointment = Visit.objects.filter(status='In Session', arrival_time__isnull=False,
                                                    start_time__isnull=False).first()
         if current_appointment:
@@ -186,9 +200,9 @@ class DoctorWelcome(TemplateView):
             current_appointment.gender = patient.get('gender')
             current_appointment.ethnicity = patient.get('ethnicity')
 
+        # create list of past visit, and use it to generate average wait and visit duration
         past_visits = Visit.objects.filter(status="Finished", arrival_time__isnull=False,
                                            start_time__isnull=False).all()
-
         if len(past_visits) > 0:
             avg_wait_time = sum([(visit.start_time - visit.arrival_time).seconds for visit in past_visits]) / len(
                 past_visits)
@@ -200,6 +214,40 @@ class DoctorWelcome(TemplateView):
         else:
             kwargs['avg_wait_duration'] = "You have no arrivals!"
             kwargs['avg_visit_duration'] = "You have no visits!"
+
+        # creating altair visualization
+
+        # create a df with list of times and durations
+        visit_data = [{
+            'start_time': visit.start_time,
+            'arrival_time': visit.arrival_time,
+            'wait_duration': visit.get_wait_duration().seconds,
+            'visit_duration': visit.get_visit_duration().seconds,
+        } for visit in past_visits]
+        visit_data_df = pd.DataFrame(visit_data)
+
+        # https://altair-viz.github.io/user_guide/interactions.html#selections-building-blocks-of-interactions
+        brush = alt.selection_interval(encodings=['x'])
+        chart = alt.Chart(visit_data_df).mark_bar().properties(
+            width=300,
+            height=150
+        ).add_selection(
+            brush
+        )
+
+        # combine two charts one with wait duration and one with visit duration
+        kwargs['chart'] = alt.hconcat(chart.encode(
+            x=alt.X('start_time:T', axis=alt.Axis(title='Time the visit started')),
+            y=alt.Y('wait_duration:Q', axis=alt.Axis(title='Wait Duration')),
+            color=alt.condition(brush, alt.value('black'), alt.value('lightgray'))
+        ), chart.encode(
+            x=alt.X('start_time:T', axis=alt.Axis(title='Time the visit started')),
+            y=alt.Y('visit_duration:Q', axis=alt.Axis(title='Visit Duration')),
+            color=alt.condition(brush, alt.value('black'), alt.value('lightgray'))
+        )).resolve_scale(
+            y='shared'
+        )
+
         return kwargs
 
 
