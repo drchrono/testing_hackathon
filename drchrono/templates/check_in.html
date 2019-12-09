@@ -1,12 +1,18 @@
 {% extends 'base.html' %}
+{% load crispy_forms_filters %}
 {% block title %}
     Check In
 {% endblock %}
+{% block header %}
+    Check In
+{% endblock %}
 {% block body %}
-    <h1>Check In</h1>
-    <form action="/check-in/" method="POST">
-        {% csrf_token %}
-        {{ form }}
-        <input type="submit" value="Check In">
-    </form>
+    <div class="row">
+
+        <form action="{% url 'check-in' %}" method="POST">
+            {% csrf_token %}
+            {{ form|crispy }}
+            <input type="submit" class="btn btn-primary" value="Check In">
+        </form>
+    </div>
 {% endblock %}

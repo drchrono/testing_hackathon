@@ -1,2 +1,0 @@
-# onbuild docker image automatically runs pip install on requirements.txt
-FROM python:2-onbuild

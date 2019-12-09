@@ -6,24 +6,25 @@ from drchrono.endpoints import BaseEndpoint, ERROR_CODES, APIException, Appointm
 
 
 class TestBaseEndpoint(TestCase):
-    def setUp(cls):
-        cls.access_token = "secret"
-        cls.client = BaseEndpoint(cls.access_token)
+    def setUp(self):
+        self.access_token = "secret"
+        self.endpoint = BaseEndpoint(self.access_token)
 
     def test_base_url(self):
-        self.assertEqual(self.client.BASE_URL, 'https://drchrono.com/api/')
+        self.assertEqual(self.endpoint.BASE_URL, 'https://drchrono.com/api/')
 
     def test_init(self):
         # set access_token
-        self.assertEqual(self.client.access_token, self.access_token)
+        self.assertEqual(self.endpoint.access_token, self.access_token)
 
     def test_url(self):
-        self.assertEqual(self.client._url("test"), "{}{}/{}".format(self.client.BASE_URL, self.client.endpoint, "test"))
-        self.assertEqual(self.client._url(), "{}{}".format(self.client.BASE_URL, self.client.endpoint))
+        self.assertEqual(self.endpoint._url("test"),
+                         "{}{}/{}".format(self.endpoint.BASE_URL, self.endpoint.endpoint, "test"))
+        self.assertEqual(self.endpoint._url(), "{}{}".format(self.endpoint.BASE_URL, self.endpoint.endpoint))
 
     def test_auth_headers(self):
         kwargs = {}
-        self.assertEqual(self.client._auth_headers(kwargs), None)
+        self.assertEqual(self.endpoint._auth_headers(kwargs), None)
         self.assertEqual(kwargs,
                          {
                              'headers': {
@@ -40,7 +41,7 @@ class TestBaseEndpoint(TestCase):
 
         response = Response()
         with self.assertRaises(ERROR_CODES.get(response.status_code, APIException)):
-            self.client._json_or_exception(response)
+            self.endpoint._json_or_exception(response)
 
         class Response:
             ok = True
@@ -48,7 +49,7 @@ class TestBaseEndpoint(TestCase):
             content = "test"
 
         response = Response()
-        self.assertEqual(self.client._json_or_exception(response), None)
+        self.assertEqual(self.endpoint._json_or_exception(response), None)
 
         class Response:
             ok = True
@@ -59,50 +60,50 @@ class TestBaseEndpoint(TestCase):
                 return "test"
 
         response = Response()
-        self.assertEqual(self.client._json_or_exception(response), response.json())
+        self.assertEqual(self.endpoint._json_or_exception(response), response.json())
 
     def test_list(self):
         # Returns an iterator
-        self.assertEqual(type(self.client.list()), GeneratorType)
+        self.assertEqual(type(self.endpoint.list()), GeneratorType)
 
         # request should fail, and raises a value error when trying to do response.json()
         with self.assertRaises(ValueError):
-            next(self.client.list())
+            next(self.endpoint.list())
 
     def test_fetch(self):
-        self.client.endpoint = 'doctors'
+        self.endpoint.endpoint = 'doctors'
         with self.assertRaises(APIException):
-            self.client.fetch(None, {})
+            self.endpoint.fetch(None, {})
 
     def test_create(self):
-        self.client.endpoint = 'doctors'
+        self.endpoint.endpoint = 'doctors'
         with self.assertRaises(APIException):
-            self.client.create()
+            self.endpoint.create()
 
     def test_update(self):
-        self.client.endpoint = 'doctors'
+        self.endpoint.endpoint = 'doctors'
         with self.assertRaises(APIException):
-            self.client.update(1, {})
+            self.endpoint.update(1, {})
 
     def test_delete(self):
-        self.client.endpoint = 'doctors'
+        self.endpoint.endpoint = 'doctors'
         kw = {}
         with self.assertRaises(APIException):
-            self.client.delete(1)
+            self.endpoint.delete(1)
 
 
 class TestAppointmentEndpoint(TestCase):
     def setUp(self):
-        self.client = AppointmentEndpoint()
+        self.endpoint = AppointmentEndpoint()
 
     def test_list(self):
         # will raise an exception if you don't provide with params that has date or datetime key
         with self.assertRaises(Exception):
-            self.client.list()
+            self.endpoint.list()
 
         # Returns an iterator
-        self.assertEqual(type(self.client.list(params={'date': None})), GeneratorType)
+        self.assertEqual(type(self.endpoint.list(params={'date': None})), GeneratorType)
 
         # request should fail, and raises a value error when trying to do response.json()
         with self.assertRaises(APIException):
-            next(self.client.list(params={'date': None}))
+            next(self.endpoint.list(params={'date': None}))

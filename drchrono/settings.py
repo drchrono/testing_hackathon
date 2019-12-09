@@ -39,7 +39,8 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'drchrono',
     'social_django',
-    'rest_framework',
+    'crispy_forms',
+    'django_altair',
 )
 
 MIDDLEWARE = (
@@ -144,3 +145,5 @@ LOGGING = {
         },
     },
 }
+
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
