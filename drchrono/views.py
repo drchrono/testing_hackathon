@@ -1,15 +1,18 @@
+import math
 import time
 from datetime import datetime, timedelta
 
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 from social_django.models import UserSocialAuth
 from social_django.utils import load_strategy
 
 from drchrono.endpoints import DoctorEndpoint, APIException, AppointmentEndpoint, PatientEndpoint
-from drchrono.forms import CheckInForm, DemographicForm
+from drchrono.forms import CheckInForm, DemographicForm, TimerForm
+from drchrono.models import Visit
 
 
 class SetupView(TemplateView):
@@ -58,29 +61,17 @@ class CheckInView(View):
         # create a form instance and populate it with data from the request:
         form = CheckInForm(request.POST)
 
-        # check whether it's valid:
         if form.is_valid():
-            # process the data in form.cleaned_data as required
-            oauth_provider = get_object_or_404(UserSocialAuth, provider='drchrono')
-            access_token = oauth_provider.extra_data['access_token']
-            patient_client = PatientEndpoint(access_token)
-            for patient in patient_client.list():
-                first_name_match = patient.get('first_name') == form.cleaned_data.get('first_name')
-                last_name_match = patient.get('last_name') == form.cleaned_data.get('last_name')
-                ssn_match = patient.get('social_security_number') == form.cleaned_data.get('ssn')
+            # update appointment status to arrived on api
+            form.appointments_client.update(form.appointment_id, {'status': 'Arrived'})
 
-                if all([first_name_match, last_name_match]) or ssn_match:
-                    patient_id = patient.get('id')
-                    appointments_client = AppointmentEndpoint(access_token)
-                    for appointment in appointments_client.list({'patient': patient_id}, start='12-06-19',
-                                                                end='12-06-19'):
-                        appointment_id = appointment.get('id')
-                        # update appointment status to arrived
-                        appointments_client.update(appointment_id, {'status': 'Arrived'})
-
-                        # redirect to demographics page with patient id as GET parameter
-                        return HttpResponseRedirect(f'/demographics/?patient_id={patient_id}')
-                # todo: add errors for non matching, appointment not found
+            # locally set status to arrived, and arrival_time to now
+            visit = Visit.objects.get(appointment_id=form.appointment_id,
+                                      patient_id=form.patient_id)
+            visit.arrival_time = timezone.now()
+            visit.status = 'Arrived'
+            visit.save()
+            return HttpResponseRedirect(f'/demographics/?patient_id={form.patient_id}')
         return render(request, 'check_in.html', {'form': form})
 
 
@@ -124,7 +115,7 @@ class DoctorWelcome(TemplateView):
             except (ValueError, TypeError):
                 return None
 
-            now = datetime.utcnow()
+            now = timezone.now()
 
             # Detect if expires is a timestamp
             if expires > time.mktime(now.timetuple()):
@@ -136,7 +127,7 @@ class DoctorWelcome(TemplateView):
                 # the value
                 auth_time = oauth_provider.extra_data.get('auth_time')
                 if auth_time:
-                    reference = datetime.utcfromtimestamp(auth_time)
+                    reference = timezone.make_aware(datetime.utcfromtimestamp(auth_time))
                     difference = (reference + timedelta(seconds=expires)) - now
                 else:
                     difference = timedelta(seconds=expires)
@@ -158,13 +149,77 @@ class DoctorWelcome(TemplateView):
         oauth_provider = get_object_or_404(UserSocialAuth, provider='drchrono')
         if self.is_access_token_expired(oauth_provider.extra_data['access_token']):
             oauth_provider.refresh_token(load_strategy())
-
         access_token = oauth_provider.extra_data['access_token']
+
+        patient_client = PatientEndpoint(access_token)
+        patients = list(patient_client.list())
+
         appointments_client = AppointmentEndpoint(access_token)
         todays_appointments = list(appointments_client.list({}, start='12-06-19', end='12-06-19'))
+
+        for appointment in todays_appointments:
+            patient = [patient for patient in patients if patient.get('id') == appointment.get('patient')][0]
+            appointment['first_name'] = patient.get('first_name')
+            appointment['last_name'] = patient.get('last_name')
+
         kwargs['appointments'] = todays_appointments
 
-        arrived_appointments = [appointment for appointment in todays_appointments if
-                                appointment.get('status') == 'Arrived']
-        kwargs['arrived'] = arrived_appointments
+        visits = Visit.objects.filter(status='Arrived', arrival_time__isnull=False, start_time__isnull=True).all()
+        for visit in visits:
+            visit.wait_since_arrived = visit.get_wait_duration().seconds
+            patient = [patient for patient in patients if patient.get('id') == visit.patient_id][0]
+            visit.first_name = patient.get('first_name')
+            visit.last_name = patient.get('last_name')
+        kwargs['arrived'] = visits
+
+        current_appointment = Visit.objects.filter(status='In Session', arrival_time__isnull=False,
+                                                   start_time__isnull=False).first()
+        if current_appointment:
+            kwargs['current_appointment'] = current_appointment
+            current_appointment.visit_duration = current_appointment.get_visit_duration().seconds
+            patient = [patient for patient in patients if patient.get('id') == current_appointment.patient_id][0]
+            current_appointment.first_name = patient.get('first_name')
+            current_appointment.last_name = patient.get('last_name')
+            current_appointment.date_of_birth = patient.get('date_of_birth')
+            current_appointment.date_of_last_appointment = patient.get('date_of_last_appointment')
+            current_appointment.race = patient.get('race')
+            current_appointment.gender = patient.get('gender')
+            current_appointment.ethnicity = patient.get('ethnicity')
+
+        past_visits = Visit.objects.filter(status="Finished", arrival_time__isnull=False,
+                                           start_time__isnull=False).all()
+
+        if len(past_visits) > 0:
+            avg_wait_time = sum([(visit.start_time - visit.arrival_time).seconds for visit in past_visits]) / len(
+                past_visits)
+            kwargs['avg_wait_duration'] = math.ceil(avg_wait_time)
+
+            avg_visit_duration = sum([(visit.end_time - visit.start_time).seconds for visit in past_visits]) / len(
+                past_visits)
+            kwargs['avg_visit_duration'] = math.ceil(avg_visit_duration)
+        else:
+            kwargs['avg_wait_duration'] = "You have no arrivals!"
+            kwargs['avg_visit_duration'] = "You have no visits!"
         return kwargs
+
+
+class VisitTimerView(View):
+    def toggle_timer(self, appointment_id):
+        visit = Visit.objects.get(appointment_id=appointment_id)
+
+        if visit.status == "Arrived":
+            visit.start_time = timezone.now()
+            visit.status = "In Session"
+            visit.save()
+        elif visit.status == "In Session":
+            visit.end_time = timezone.now()
+            visit.status = "Finished"
+            visit.save()
+        else:
+            raise Exception(f"{visit} has an invalid status of: {visit.status} {type(visit.status)}")
+
+    def post(self, request):
+        form = TimerForm(request.POST)
+        if form.is_valid():
+            self.toggle_timer(appointment_id=form.cleaned_data.get('appointment_id'))
+        return HttpResponseRedirect(f'/welcome/')

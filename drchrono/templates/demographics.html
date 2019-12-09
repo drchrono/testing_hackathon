@@ -1,14 +1,20 @@
 {% extends 'base.html' %}
+{% load crispy_forms_filters %}
 {% block title %}
     Update Demographic Information
 {% endblock %}
 {% block body %}
-    <h1>Update Demographic Information</h1>
-    <form action="/demographics/" method="POST">
-        {% csrf_token %}
-        {{ form }}
-        <input type="hidden" name="patient_id" value="{{ patient_id }}"/>
-        <input type="submit" value="Update my information"/>
-        <input type="submit" value="Looks good to me!"/>
-    </form>
+    <div class="row text-center">
+        <h1>Update Demographic Information</h1>
+    </div>
+    <hr/>
+    <div class="row">
+        <form action="{% url 'demographics' %}" method="POST">
+            {% csrf_token %}
+            {{ form|crispy }}
+            <input type="hidden" name="patient_id" value="{{ patient_id }}"/>
+            <input type="submit" class="btn btn-secondary" value="Update my information"/>
+            <input type="submit" class="btn btn-primary" value="Looks good to me!"/>
+        </form>
+    </div>
 {% endblock %}

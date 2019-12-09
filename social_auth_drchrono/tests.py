@@ -8,7 +8,6 @@ class TestDrchronoOAuth2(TestCase):
     def setUp(self):
         self.oauth_client = drchronoOAuth2(strategy=None)
 
-    # todo: useless?
     def test_get_user_details(self):
         self.assertEqual(self.oauth_client.get_user_details({'username': 'test'}), {'username': 'test'})
 

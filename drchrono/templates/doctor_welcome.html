@@ -1,25 +1,133 @@
 {% extends 'base.html' %}
-{% block title %}
-    Welcome!
+{% block header %}
+    Welcome {{ doctor.first_name }} {{ doctor.last_name }}
 {% endblock %}
 {% block body %}
-    <h1>Welcome {{ doctor.first_name }} {{ doctor.last_name }}</h1>
-    <h2>{{ doctor }}</h2>
-    <h1>Arrivals</h1>
-    <div id="arrivals">
-        {% for appointment in arrived %}
-            <div class="appointment">
-                {{ appointment }}
-            </div>
-        {% endfor %}
+    <div class="row text-center" id="statistics">
+        <div class="col-6">
+            <h2>Average Wait Duration</h2>
+            <span>{{ avg_wait_duration }} Seconds</span>
+        </div>
+        <div class="col-6">
+            <h2>Average Visit Duration</h2>
+            <span>{{ avg_visit_duration }} Seconds</span>
+        </div>
     </div>
-    <h1>Today's Appointments</h1>
-    <div id="appointments">
-        {% for appointment in appointments %}
-            <div class="appointment">
-                {{ appointment }}
-            </div>
-        {% endfor %}
+    <hr/>
+
+    <div class="row">
+        <div class="col-6">
+            <h2>Current Appointment</h2>
+            {% if current_appointment %}
+                You have been seeing {{ current_appointment.first_name }} {{ current_appointment.last_name }} for
+                <span class="timer" seconds="{{ current_appointment.visit_duration }}"></span>
+                <form action="{% url 'timer' %}" method="POST" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="appointment_id"
+                           value="{{ current_appointment.appointment_id }}"/>
+                    <input type="submit" class="btn btn-secondary" value="Stop visit"/>
+                </form>
+                <div>
+                    Last Appointment: {{ current_appointment.date_of_last_appointment }}
+                </div>
+                <div>
+                    Date of Birth: {{ current_appointment.date_of_birth }}
+                </div>
+                <div>
+                    Gender: {{ current_appointment.gender }}
+                </div>
+                <div>
+                    Race: {{ current_appointment.race }}
+                </div>
+                <div>
+                    Ethnicity: {{ current_appointment.ethnicity }}
+                </div>
+            {% else %}
+                <div>No appointment right now.</div>
+            {% endif %}
+        </div>
+        <div class="col-6">
+            <h2>Arrivals</h2>
+            {% if arrived %}
+                {% for appointment in arrived %}
+                    <div class="appointment">
+                        {{ appointment.first_name }} {{ appointment.last_name }} has been waiting:
+                        <span class="wait-since-arrived timer"
+                              seconds="{{ appointment.wait_since_arrived }}"></span>
+                        {% if not current_appointment %}
+                            <span>
+                                    <form action="{% url 'timer' %}" method="POST" style="display:inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="appointment_id"
+                                               value="{{ appointment.appointment_id }}"/>
+                                        <input type="submit" class="btn btn-primary" value="Start visit"
+                                               style="float:right;"/>
+                                    </form>
+                                </span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="row" id="current-appointment">
+                    <div class="col-12">
+                        <div>No one has arrived yet.</div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
     </div>
-    <a href="/check-in/">Check In</a>
+    <hr/>
+    <div class="row">
+        <div class="col-12">
+            <h2>Today's Appointments</h2>
+            <div id="appointments">
+                {% for appointment in appointments %}
+                    <div class="appointment" class="row">
+                        {{ appointment.first_name }} {{ appointment.last_name }} @ <span class="time"
+                                                                                         datetime="{{ appointment.scheduled_time }}"></span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block js %}
+    <script>
+        function updateTimers() {
+            // set the content of the element with the ID time to the formatted string
+            let timers = document.getElementsByClassName('timer');
+            Array.from(timers).forEach(function (timer) {
+                var seconds = parseInt(timer.getAttribute('seconds')) + 1;
+                var minutes = Math.floor(seconds / 60);
+                var remaining_seconds = seconds - minutes * 60;
+                if (remaining_seconds < 10) {
+                    remaining_seconds = `0${remaining_seconds}`;
+                }
+                timer.setAttribute('seconds', seconds);
+                timer.innerHTML = `${minutes}:${remaining_seconds}`
+            });
+
+            // call this function again in 1000ms
+            setTimeout(updateTimers, 1000);
+        }
+
+        function formatTimes() {
+            let times = document.getElementsByClassName('time');
+            Array.from(times).forEach(function (time) {
+                date_obj = new Date(time.getAttribute('datetime'));
+                minutes = date_obj.getMinutes();
+                if (minutes < 10) {
+                    minutes = `0${minutes}`;
+                }
+
+                time.innerHTML = `${date_obj.getHours()}:${minutes}`
+            })
+
+        }
+
+        $(document).ready(function () {
+            formatTimes();
+            updateTimers();
+        });
+    </script>
 {% endblock %}

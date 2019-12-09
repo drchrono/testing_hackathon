@@ -1,4 +1,43 @@
-# drchrono Hackathon
+# DrChrono Hackathon
+
+## How to setup this project
+First, clone this repository and change directories.
+```bash
+git clone https://github.com/DustinAlandzes/drchrono-hackathon.git
+cd drchrono-hackathon
+```
+
+Then, setup a virtualenv folder, source it, install the requirements. This requires Python 3.
+
+```
+# with osx/brew I use: virtualenv -p /usr/local/bin/python3 venv
+virtualenv venv 
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+Run `makemigrations`, and `migrate`. This should create a file named drchrono.sqlite3.
+```
+python manage.py makemigrations
+python manage.py migrate
+```
+
+Get credentials and set the environment variables so we can talk to drchrono.
+  - Get your tokens from the drchrono.com website under Account -> API.
+  - If you use PyCharm
+    * Set the virtualenv you made as the project interpreter.
+    * Create a run configuration: https://www.jetbrains.com/help/pycharm/creating-and-editing-run-debug-configurations.html
+    * Set the SOCIAL_AUTH_CLIENT_ID and SOCIAL_AUTH_SECRET environment variables in the configuration tab
+  - Otherwise in your terminal:`
+export SOCIAL_AUTH_CLIENT_ID=YOURS
+export SOCIAL_AUTH_SECRET=YOURS
+`
+
+Run tests, and if all is well start the server!
+```
+python manage.py test
+python manage.py runserver
+```
 
 ### Doctor Dashboard
 
