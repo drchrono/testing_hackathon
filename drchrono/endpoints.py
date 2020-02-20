@@ -204,6 +204,16 @@ class AppointmentEndpoint(BaseEndpoint):
         return super(AppointmentEndpoint, self).list(params, **kwargs)
 
 
+    def create(self, params=None, doctor=None, exam_room=None, office=None, patient=None, scheduled_time=None):
+        """
+        Create a new appointment or break on doctor's calendar
+        """
+        params = params or {}
+
+        return super(AppointmentEndpoint, self).create(params, **kwargs)
+
+
+
 class DoctorEndpoint(BaseEndpoint):
     endpoint = "doctors"
 
@@ -219,3 +229,15 @@ class DoctorEndpoint(BaseEndpoint):
 
 class AppointmentProfileEndpoint(BaseEndpoint):
     endpoint = "appointment_profiles"
+
+class TaskEndpoint(BaseEndpoint):
+    endpoint = "tasks"
+
+    def create(self, params=None, status=None, title=None):
+        """
+        Create a task
+        """
+
+        params = params or {}
+
+        return super(TaskEndpoint, self).create(params, **kwargs)
