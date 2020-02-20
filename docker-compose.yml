@@ -1,0 +1,18 @@
+version: '2'
+services:
+  drchrono:
+    container_name: drchrono
+    image: drchrono
+    env_file:
+      # Any environmental variables you want can go in this plain text file. See the docs.
+      - "docker/environment"
+    ports:
+      - "8080:8080"
+#    command: /bin/bash -c "while true; do echo mark; sleep 2; done"
+    command: /bin/bash -c "python ./manage.py makemigrations && python ./manage.py migrate && python ./manage.py runserver 0.0.0.0:8080"
+    volumes:
+      - ".:/usr/src/app"
+    working_dir: /usr/src/app
+    build:
+      context: .
+      dockerfile: ./docker/drchrono-dockerfile
