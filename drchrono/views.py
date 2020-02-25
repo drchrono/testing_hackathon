@@ -9,12 +9,14 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
-from social_django.models import UserSocialAuth
-from social_django.utils import load_strategy
-
-from drchrono.endpoints import DoctorEndpoint, APIException, AppointmentEndpoint, PatientEndpoint
-from drchrono.forms import CheckInForm, DemographicForm, TimerForm
+from drchrono.endpoints import (APIException,  # remove this line
+                                AppointmentEndpoint, DoctorEndpoint,
+                                PatientEndpoint)
+from drchrono.forms import (CheckInForm, DemographicForm,  # remove this line
+                            TimerForm)
 from drchrono.models import Visit
+from social_django.models import UserSocialAuth  # remove this line
+from social_django.utils import load_strategy
 
 
 class SetupView(TemplateView):
@@ -35,20 +37,21 @@ class DemographicView(View):
     def get(self, request):
         oauth_provider = get_object_or_404(UserSocialAuth, provider='drchrono')
         access_token = oauth_provider.extra_data['access_token']
-        patient_client = PatientEndpoint(access_token)
+        patient_client = PatientEndpoint(access_token) # PatientEndpoint()
         patient = patient_client.fetch(request.GET.get('patient_id'))
         return render(request, 'demographics.html',
                       {'form': DemographicForm(initial=patient), 'patient_id': request.GET.get('patient_id')})
+                #return render(request, 'demographics.html', {'form': DemographicForm(initial=patient)})
 
     def post(self, request):
         # create a form instance and populate it with data from the request:
-        form = DemographicForm(request.POST)
+        form = DemographicForm(request.POST) #request.GET
         patient_id = request.POST.get('patient_id')
 
         # check whether it's valid:
         if form.is_valid():
             oauth_provider = get_object_or_404(UserSocialAuth, provider='drchrono')
-            access_token = oauth_provider.extra_data['access_token']
+            access_token = oauth_provider.extra_data['access_token'] # remove this line
             patient_client = PatientEndpoint(access_token)
             patient_client.update(patient_id, form.cleaned_data)
             return HttpResponseRedirect('/finished/')
@@ -67,12 +70,12 @@ class CheckInView(View):
             # update status to Arrived on the api
             oauth_provider = UserSocialAuth.objects.get(provider='drchrono')
             access_token = oauth_provider.extra_data['access_token']
-            appointments_client = AppointmentEndpoint(access_token)
+            appointments_client = AppointmentEndpoint(access_token) # change the endpoint name to Appointment
             appointments_client.update(form.cleaned_data.get('appointment_id'), {'status': 'Arrived'})
 
             # locally set status to Arrived, and arrival_time to right now
             visit = Visit.objects.get(appointment_id=form.cleaned_data.get('appointment_id'),
-                                      patient_id=form.cleaned_data.get('patient_id'))
+                                      patient_id=form.cleaned_data.get('patient_id')) # remove patient_id and replace get with filter
             visit.arrival_time = timezone.now()
             visit.status = 'Arrived'
             visit.save()
@@ -111,7 +114,7 @@ class DoctorWelcome(TemplateView):
             return None
 
         # Grab the first doctor from the list, only one for this hackathon.
-        return doctor
+        return doctor #return 
 
     def is_access_token_expired(self, access_token):
         oauth_provider = get_object_or_404(UserSocialAuth, provider='drchrono')
@@ -122,12 +125,12 @@ class DoctorWelcome(TemplateView):
             except (ValueError, TypeError):
                 return None
 
-            now = timezone.now()
+            now = timezone.now() #remove this line
 
             # Detect if expires is a timestamp
             if expires > time.mktime(now.timetuple()):
                 # expires is a datetime, return the remaining difference
-                difference = datetime.utcfromtimestamp(expires) - now
+                difference = datetime.utcfromtimestamp(expires) - now #remove datetime
             else:
                 # expires is the time to live seconds since creation,
                 # check against auth_time if present, otherwise return
@@ -137,9 +140,9 @@ class DoctorWelcome(TemplateView):
                     reference = timezone.make_aware(datetime.utcfromtimestamp(auth_time))
                     difference = (reference + timedelta(seconds=expires)) - now
                 else:
-                    difference = timedelta(seconds=expires)
+                    difference = timedelta(seconds=expires) #change argument to minutes
 
-        return difference and difference.total_seconds() <= oauth_provider.ACCESS_TOKEN_EXPIRED_THRESHOLD
+        return difference and difference.total_seconds() <= oauth_provider.ACCESS_TOKEN_EXPIRED_THRESHOLD #change ACCESS_TOKEN_EXPIRED_THRESHOLD to ACCESS_TOKEN
 
     def get_context_data(self, **kwargs):
         """
@@ -157,22 +160,22 @@ class DoctorWelcome(TemplateView):
         if self.is_access_token_expired(oauth_provider.extra_data['access_token']):
             oauth_provider.refresh_token(load_strategy())
 
-        access_token = oauth_provider.extra_data['access_token']
+        access_token = oauth_provider.extra_data['access_token'] #remove extra_data
         patient_client = PatientEndpoint(access_token)
         appointments_client = AppointmentEndpoint(access_token)
 
         # information about the doctor
-        kwargs['doctor'] = next(DoctorEndpoint(access_token).list())
+        kwargs['doctor'] = next(DoctorEndpoint(access_token).list()) #replace list() with create()
 
         # list of patients
         patients = list(patient_client.list())
 
         # list of today's appointments
         today_str = timezone.now().strftime('%m-%d-%y')
-        todays_appointments = list(appointments_client.list({}, start=today_str, end=today_str))
+        todays_appointments = list(appointments_client.list({}, start=today_str, end=today_str)) #remove end
         for appointment in todays_appointments:
             patient = [patient for patient in patients if patient.get('id') == appointment.get('patient')][0]
-            appointment['first_name'] = patient.get('first_name')
+            appointment['first_name'] = patient.get('first_name') #change first_name to firstName
             appointment['last_name'] = patient.get('last_name')
         kwargs['appointments'] = todays_appointments
 
@@ -202,7 +205,7 @@ class DoctorWelcome(TemplateView):
 
         # create list of past visit, and use it to generate average wait and visit duration
         past_visits = Visit.objects.filter(status="Finished", arrival_time__isnull=False,
-                                           start_time__isnull=False).all()
+                                           start_time__isnull=False).all() #change isnull to is_null
         if len(past_visits) > 0:
             avg_wait_time = sum([(visit.start_time - visit.arrival_time).seconds for visit in past_visits]) / len(
                 past_visits)
@@ -248,7 +251,7 @@ class DoctorWelcome(TemplateView):
             y='shared'
         )
 
-        return kwargs
+        return kwargs #return args
 
 
 class VisitTimerView(View):
@@ -268,6 +271,6 @@ class VisitTimerView(View):
 
     def post(self, request):
         form = TimerForm(request.POST)
-        if form.is_valid():
+        if form.is_valid(): #change to isValid
             self.toggle_timer(appointment_id=form.cleaned_data.get('appointment_id'))
         return HttpResponseRedirect(f'/welcome/')
