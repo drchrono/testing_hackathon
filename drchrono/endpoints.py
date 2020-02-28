@@ -204,14 +204,39 @@ class AppointmentEndpoint(BaseEndpoint):
         return super(AppointmentEndpoint, self).list(params, **kwargs)
 
 
-    def create(self, params=None, doctor=None, exam_room=None, office=None, patient=None, scheduled_time=None):
+    def create(self, params=None, doctor=None, exam_room=None, office=None, patient=None, scheduled_time=None, **kwargs):
         """
         Create a new appointment or break on doctor's calendar
         """
         params = params or {}
+        if not (doctor and exam_room and office and patient and scheduled_time):
+            raise Exception("Must provide doctor, exam_room, office, patient and scheduled_time argument")
+
+        for p in ('doctor', 'exam_room', 'office', 'patient', 'scheduled_time'):
+            params[p] = kwargs[p]
 
         return super(AppointmentEndpoint, self).create(params, **kwargs)
 
+    def update(self, params=None, id = None, **kwargs):
+        """
+        Update an existing appointment or break
+        """
+
+        params = params or {}
+        if not id:
+            raise Exception("Must provide id of the appointment")
+
+        return super(AppointmentEndpoint, self).update(params, id, **kwargs)
+
+    def delete(self, params=None, id=None, **kwargs):
+        """
+        Delete an existing appointment or break
+        """
+
+        if not id:
+            raise Exception("Must provide id of the appointment")
+
+        return super(AppointmentEndpoint, self).delete(id, **kwargs)
 
 
 class DoctorEndpoint(BaseEndpoint):
@@ -239,5 +264,19 @@ class TaskEndpoint(BaseEndpoint):
         """
 
         params = params or {}
+        if status is None or title is None:
+            raise Exception("Must provide status and title argument")
+
+        params['status'] = status
+        params['title'] = title
 
         return super(TaskEndpoint, self).create(params, **kwargs)
+
+    def list(self, params):
+        """
+        Retrieve or search tasks
+        """
+
+        params = params or {}
+
+        return super(TaskEndpoint, self).list(params, **kwargs)

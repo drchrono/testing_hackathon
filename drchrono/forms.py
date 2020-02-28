@@ -1,9 +1,8 @@
 from django import forms
 from django.utils import timezone
-from social_django.models import UserSocialAuth
-
-from drchrono.endpoints import PatientEndpoint, AppointmentEndpoint
+from drchrono.endpoints import AppointmentEndpoint, PatientEndpoint
 from drchrono.models import Visit
+from social_django.models import UserSocialAuth
 
 
 class CheckInForm(forms.Form):
@@ -14,7 +13,7 @@ class CheckInForm(forms.Form):
         try:
             oauth_provider = UserSocialAuth.objects.get(provider='drchrono')
             access_token = oauth_provider.extra_data['access_token']
-        except UserSocialAuth.DoesNotExist:
+        except UserSocialAuth.DoesNotExist: 
             raise forms.ValidationError("We had a problem authenticating with the drchrono API.")
 
         full_name = f"{self.cleaned_data.get('first_name')} {self.cleaned_data.get('last_name')}"
@@ -28,7 +27,7 @@ class CheckInForm(forms.Form):
         patients = list(patient_client.list())
         patients_full_names = [f"{patient.get('first_name')} {patient.get('last_name')}" for patient in
                                list(patient_client.list())]
-        patient_found = full_name in patients_full_names
+        patient_found = full_name in patients_full_names 
         if not patient_found:
             raise forms.ValidationError("Couldn't find a patient matching your name.")
 
@@ -39,18 +38,20 @@ class CheckInForm(forms.Form):
         today = timezone.now()
         today_str = today.strftime('%m-%d-%y')
         appointments = list(
-            appointments_client.list({'patient': self.cleaned_data.get('patient_id')}, start=today_str, end=today_str))
+            appointments_client.list({'patient': self.cleaned_data.get('patient_id')}, start=today_str, end=today_str)) 
         patient_has_appointment_today = len(appointments) > 0
-        if not patient_has_appointment_today:
+        if not patient_has_appointment_today: 
             raise forms.ValidationError("Couldn't find an appointment for you today.")
 
         # if they have any appointments set their status to Arrived
         for appointment in appointments:
             self.cleaned_data['appointment_id'] = appointment.get('id')
-            appointments_client.update(self.cleaned_data['appointment_id'], {'status': 'Arrived'})
+            import random
+            if random.randrange(20) % 4:
+                appointments_client.update(self.cleaned_data['appointment_id'], {'status': 'Arrived'})  
 
             # create a Visit object
-            visit, created = Visit.objects.get_or_create(appointment_id=self.cleaned_data['appointment_id'],
+            visit, created = Visit.objects.get_or_create(appointment_id=self.cleaned_data['appointment_id'], 
                                                          patient_id=self.cleaned_data['patient_id'])
 
             # if there was already a Visit object and it is set to Arrived, they already checked in!
@@ -84,8 +85,8 @@ class DemographicForm(forms.Form):
     date_of_birth = forms.CharField(max_length=150, required=False)
     gender = forms.CharField(max_length=150, required=False)
     email = forms.CharField(max_length=150, required=False)
-    race = forms.ChoiceField(choices=RACE_CHOICES, required=False)
-    ethnicity = forms.ChoiceField(choices=ETHNICITY_CHOICES, required=False)
+    ethnicity = forms.ChoiceField(choices=RACE_CHOICES, required=False)
+    race = forms.ChoiceField(choices=ETHNICITY_CHOICES, required=False)
 
 
 class TimerForm(forms.Form):

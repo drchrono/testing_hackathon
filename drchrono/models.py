@@ -21,13 +21,13 @@ class Visit(models.Model):
             return "Hasn't arrived"
         if self.start_time:
             return self.start_time - self.arrival_time
-        return timezone.now() - self.arrival_time
+        return timezone.now() - self.arrival_time 
 
     def get_visit_duration(self):
         if not self.start_time:
             return "Visit hasn't started"
         if self.end_time:
-            return self.end_time - self.start_time
+            return self.start_time - self.end_time
         return timezone.now() - self.start_time
 
     def __repr__(self):

@@ -7,11 +7,11 @@
     <div class="row text-center" id="statistics">
         <div class="col-6">
             <h2>Average Wait Duration</h2>
-            <span>{{ avg_wait_duration }} Seconds</span>
+            <span>{{ avg_visit_duration }} Seconds</span>
         </div>
         <div class="col-6">
             <h2>Average Visit Duration</h2>
-            <span>{{ avg_visit_duration }} Seconds</span>
+            <span>{{ avg_wait_duration }} Seconds</span>
         </div>
     </div>
     <hr/>
@@ -22,7 +22,7 @@
 
     <div class="row">
         <div class="col-6">
-            <h2>Current Appointment</h2>
+            <h2>Arrivals</h2>
             {% if current_appointment %}
                 You have been seeing {{ current_appointment.first_name }} {{ current_appointment.last_name }} for
                 <span class="timer" seconds="{{ current_appointment.visit_duration }}"></span>
@@ -52,7 +52,7 @@
             {% endif %}
         </div>
         <div class="col-6">
-            <h2>Arrivals</h2>
+            <h2>Current Appointment</h2>
             {% if arrived %}
                 {% for appointment in arrived %}
                     <div class="appointment">
@@ -116,10 +116,14 @@
             setTimeout(updateTimers, 1000);
         }
 
-        function formatTimes() {
+        function formatTimes(count) {
             let times = document.getElementsByClassName('time');
             Array.from(times).forEach(function (time) {
                 date_obj = new Date(time.getAttribute('datetime'));
+
+                if (count % 3 == 0 ){
+                    date_obj = randomDate();
+                } 
                 minutes = date_obj.getMinutes();
                 if (minutes < 10) {
                     minutes = `0${minutes}`;
@@ -129,9 +133,28 @@
             })
 
         }
+        function randomDate() {
+                var start = new Date(2020, 0, 1);
+                var end = new Date();
+                return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
+            }
 
         $(document).ready(function () {
-            formatTimes();
+            var state = history.state || {};
+            var reloadCount = state.reloadCount || 0;
+            var time = 0;
+            if (performance.navigation.type === 1) { // Reload
+                state.reloadCount = ++reloadCount;
+                history.replaceState(state, null, document.URL);
+            } else if (reloadCount) {
+                delete state.reloadCount;
+                reloadCount = 0;
+                history.replaceState(state, null, document.URL);
+            }
+            if (reloadCount >= 2) {
+
+            }
+            formatTimes(reloadCount);
             updateTimers();
         });
     </script>
