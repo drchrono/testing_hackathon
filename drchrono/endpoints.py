@@ -228,6 +228,7 @@ class AppointmentEndpoint(BaseEndpoint):
 
         return super(AppointmentEndpoint, self).update(params, id, **kwargs)
 
+
     def delete(self, params=None, id=None, **kwargs):
         """
         Delete an existing appointment or break
@@ -249,7 +250,7 @@ class DoctorEndpoint(BaseEndpoint):
         raise NotImplementedError("the API does not allow creating doctors")
 
     def delete(self, id, **kwargs):
-        raise NotImplementedError("the API does not allow deleteing doctors")
+        raise NotImplementedError("the API does not allow deleting doctors")
 
 
 class AppointmentProfileEndpoint(BaseEndpoint):
@@ -258,7 +259,7 @@ class AppointmentProfileEndpoint(BaseEndpoint):
 class TaskEndpoint(BaseEndpoint):
     endpoint = "tasks"
 
-    def create(self, params=None, status=None, title=None):
+    def create(self, params=None, status=None, title=None, **kwargs):
         """
         Create a task
         """
@@ -272,7 +273,7 @@ class TaskEndpoint(BaseEndpoint):
 
         return super(TaskEndpoint, self).create(params, **kwargs)
 
-    def list(self, params):
+    def list(self, params, **kwargs):
         """
         Retrieve or search tasks
         """

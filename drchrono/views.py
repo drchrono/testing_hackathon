@@ -124,6 +124,7 @@ class DoctorWelcome(TemplateView):
             if expires > time.mktime(now.timetuple()):
                 # expires is a datetime, return the remaining difference
                 difference = datetime.utcfromtimestamp(expires) - now 
+
             else:
                 # expires is the time to live seconds since creation,
                 # check against auth_time if present, otherwise return
@@ -265,6 +266,7 @@ class VisitTimerView(View):
 
     def post(self, request):
         form = TimerForm(request.POST)
+
         if form.is_valid(): 
             self.toggle_timer(appointment_id=form.cleaned_data.get('appointment_id'))
         return HttpResponseRedirect(f'/welcome/')
